@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NFC Tag Scanner</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-border: #262b36;
+    --text: #eef1f6;
+    --muted: #8a92a3;
+    --accent: #5b8cff;
+    --accent-dim: #2a3a63;
+    --good: #35d488;
+    --bad: #ff5d6c;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .card {
+    width: 100%;
+    max-width: 420px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 16px;
+    padding: 28px 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  }
+  h1 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 4px;
+    letter-spacing: 0.2px;
+  }
+  .sub {
+    color: var(--muted);
+    font-size: 13px;
+    margin: 0 0 22px;
+  }
+  .display {
+    background: #0b0d12;
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .letter {
+    font-size: 84px;
+    font-weight: 700;
+    color: var(--accent);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+  .letter.placeholder {
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 400;
+  }
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 18px;
+    min-height: 18px;
+  }
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--muted);
+    flex-shrink: 0;
+  }
+  .dot.scanning { background: var(--accent); animation: pulse 1.2s infinite ease-in-out; }
+  .dot.ok { background: var(--good); }
+  .dot.err { background: var(--bad); }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
+  button {
+    width: 100%;
+    padding: 13px 16px;
+    border-radius: 10px;
+    border: none;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, opacity 0.15s ease;
+  }
+  #scanBtn {
+    background: var(--accent);
+    color: #fff;
+  }
+  #scanBtn:hover { background: #4a7af0; }
+  #scanBtn:disabled { opacity: 0.5; cursor: default; }
+  .meta {
+    margin-top: 16px;
+    font-size: 12px;
+    color: var(--muted);
+    display: none;
+    line-height: 1.6;
+    border-top: 1px solid var(--panel-border);
+    padding-top: 12px;
+  }
+  .meta.show { display: block; }
+  .meta span { color: var(--text); }
+
+  .sim {
+    margin-top: 20px;
+    border-top: 1px solid var(--panel-border);
+    padding-top: 16px;
+  }
+  .sim summary {
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--muted);
+    user-select: none;
+  }
+  .sim-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .sim-grid button {
+    background: var(--accent-dim);
+    color: var(--text);
+    font-size: 13px;
+    padding: 10px 0;
+  }
+  .sim-grid button:hover { background: #35437a; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>NFC Tag Scanner</h1>
+  <p class="sub">Tap "Scan" then hold a tag near your device.</p>
+
+  <div class="display">
+    <div id="letter" class="letter placeholder">Waiting for scan…</div>
+  </div>
+
+  <div class="status">
+    <span id="statusDot" class="dot"></span>
+    <span id="statusText">Idle</span>
+  </div>
+
+  <button id="scanBtn">Scan NFC Tag</button>
+
+  <div id="meta" class="meta">
+    Tag ID: <span id="metaId">–</span><br>
+    Serial number: <span id="metaSerial">–</span>
+  </div>
+
+  <details class="sim">
+    <summary>No NFC hardware? Simulate a scan</summary>
+    <div class="sim-grid">
+      <button data-id="0">0</button>
+      <button data-id="1">1</button>
+      <button data-id="2">2</button>
+      <button data-id="3">3</button>
+      <button data-id="4">4</button>
+    </div>
+  </details>
+</div>
+
+<script>
+  // Map scanned IDs (0-4) to their associated data.
+  // Swap this out for real data lookups (API call, DB, etc.) as needed.
+  const ID_DATA = {
+    0: "H",
+    1: "E",
+    2: "L",
+    3: "L",
+    4: "O",
+  };
+
+  const letterEl = document.getElementById("letter");
+  const statusDot = document.getElementById("statusDot");
+  const statusText = document.getElementById("statusText");
+  const scanBtn = document.getElementById("scanBtn");
+  const metaEl = document.getElementById("meta");
+  const metaId = document.getElementById("metaId");
+  const metaSerial = document.getElementById("metaSerial");
+
+  function setStatus(state, text) {
+    statusDot.className = "dot" + (state ? " " + state : "");
+    statusText.textContent = text;
+  }
+
+  function showResult(id, serial) {
+    const data = ID_DATA[id];
+    if (data === undefined) {
+      letterEl.textContent = "?";
+      letterEl.classList.remove("placeholder");
+      setStatus("err", `Unknown ID "${id}" — no data mapped`);
+    } else {
+      letterEl.textContent = data;
+      letterEl.classList.remove("placeholder");
+      setStatus("ok", "Scan successful");
+    }
+    metaId.innerHTML = "";
+    metaId.textContent = id;
+    metaSerial.textContent = serial ?? "–";
+    metaEl.classList.add("show");
+  }
+
+  // Reads a numeric ID (0-4) out of a scanned NDEF message.
+  // Expects a text record whose content is the ID, e.g. tag written with "2".
+  // Falls back to deriving an ID from the tag's serial number if no
+  // matching text record is found, so untouched/blank tags still demo something.
+  function extractId(message, serialNumber) {
+    for (const record of message.records) {
+      if (record.recordType === "text") {
+        const decoder = new TextDecoder(record.encoding || "utf-8");
+        const text = decoder.decode(record.data).trim();
+        const num = parseInt(text, 10);
+        if (!Number.isNaN(num)) return num;
+      }
+    }
+    if (serialNumber) {
+      const hex = serialNumber.replace(/:/g, "");
+      const n = parseInt(hex.slice(-2), 16);
+      if (!Number.isNaN(n)) return n % 5;
+    }
+    return null;
+  }
+
+  async function startScan() {
+    if (!("NDEFReader" in window)) {
+      setStatus("err", "Web NFC not supported in this browser (try Chrome on Android, over HTTPS)");
+      return;
+    }
+    try {
+      const ndef = new NDEFReader();
+      await ndef.scan();
+      setStatus("scanning", "Scanning… hold a tag near your device");
+      scanBtn.disabled = true;
+
+      ndef.addEventListener("reading", ({ message, serialNumber }) => {
+        const id = extractId(message, serialNumber);
+        if (id === null) {
+          setStatus("err", "Tag read, but no usable ID found on it");
+        } else {
+          showResult(id, serialNumber);
+        }
+        scanBtn.disabled = false;
+      });
+
+      ndef.addEventListener("readingerror", () => {
+        setStatus("err", "Failed to read tag — try again");
+        scanBtn.disabled = false;
+      });
+    } catch (err) {
+      setStatus("err", "Scan failed: " + err.message);
+      scanBtn.disabled = false;
+    }
+  }
+
+  scanBtn.addEventListener("click", startScan);
+
+  // Simulate mode — for testing on desktop or without physical tags.
+  document.querySelectorAll(".sim-grid button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = parseInt(btn.dataset.id, 10);
+      showResult(id, "SIMULATED");
+    });
+  });
+</script>
+
+</body>
+</html>
