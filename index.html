@@ -265,7 +265,7 @@
       root.appendChild(glyph);
       codeRowEl.appendChild(root);
 
-      cells.push({ root, canvas, ctx: canvas.getContext("2d"), glyph, dropY: 0, running: true, w: 0, h: 0 });
+      cells.push({ root, canvas, ctx: canvas.getContext("2d"), glyph, dropY: 0, running: true, w: 0, h: 0, sized: false });
     }
   }
 
@@ -290,6 +290,11 @@
       cell.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       cell.ctx.clearRect(0, 0, w, h);
 
+      if (!cell.sized) {
+        cell.dropY = Math.random() * h; // desynced starting position
+        cell.sized = true;
+      }
+
       cell.glyph.style.fontSize = Math.round(w * 0.85) + "px";
     });
   }
@@ -308,11 +313,15 @@
     if (cell.dropY > h + fontSize) cell.dropY = 0;
   }
 
-  const columnLoop = setInterval(() => {
-    cells.forEach((cell) => {
-      if (cell.running) drawColumn(cell);
-    });
-  }, 90);
+  function startColumn(cell) {
+    const period = 80 + Math.random() * 70; // desynced fall speed
+    const delay = Math.random() * 500; // desynced phase
+    setTimeout(() => {
+      setInterval(() => {
+        if (cell.running) drawColumn(cell);
+      }, period);
+    }, delay);
+  }
 
   function lockInChar(i) {
     const cell = cells[i];
@@ -439,7 +448,7 @@
     cells.forEach((cell, i) => {
       cell.root.classList.remove("locked");
       cell.glyph.style.opacity = 0;
-      cell.dropY = 0;
+      cell.dropY = Math.random() * cell.h;
       cell.running = true;
     });
     checkComplete();
@@ -474,6 +483,7 @@
   buildCells();
   sizeCells();
   initCells();
+  cells.forEach(startColumn);
   renderSimButtons();
 </script>
 
