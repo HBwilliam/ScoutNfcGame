@@ -3,237 +3,241 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Scout NFC Hunt</title>
+<title>ECHO-006</title>
 <style>
   :root {
-    --bg: #0f1115;
-    --panel: #171a21;
-    --panel-border: #262b36;
-    --text: #eef1f6;
-    --muted: #8a92a3;
-    --accent: #5b8cff;
-    --accent-dim: #2a3a63;
-    --good: #35d488;
+    --matrix: #39ff14;
+    --matrix-dim: rgba(57, 255, 20, 0.32);
     --bad: #ff5d6c;
+    --muted: #4d6b53;
   }
   * { box-sizing: border-box; }
   html, body {
     margin: 0;
-    min-height: 100%;
-    background: var(--bg);
-    color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    height: 100%;
+    background: #000;
+    overflow: hidden;
+    font-family: "Courier New", Consolas, monospace;
   }
-  body {
+
+  #matrix {
+    position: fixed;
+    inset: 0;
+    display: block;
+  }
+
+  .stage {
+    position: fixed;
+    inset: 0;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 26px;
     padding: 24px;
-  }
-  .card {
-    width: 100%;
-    max-width: 480px;
-    background: var(--panel);
-    border: 1px solid var(--panel-border);
-    border-radius: 20px;
-    padding: 36px 24px 28px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
     text-align: center;
   }
 
-  .hero {
-    font-size: 56px;
-    font-weight: 800;
-    letter-spacing: 4px;
-    color: var(--muted);
-    margin-bottom: 32px;
-    animation: flicker 3s ease-in-out infinite;
-    transition: color 0.4s ease;
+  .code-row {
+    display: flex;
+    gap: clamp(4px, 1.6vw, 12px);
   }
-  .hero.solved {
-    color: var(--good);
-    letter-spacing: normal;
-    animation: none;
-  }
-  .hero .ig-link {
-    display: inline-block;
-    font-size: 16px;
+  .cell {
+    font-size: clamp(26px, 8vw, 48px);
     font-weight: 700;
-    letter-spacing: normal;
-    padding: 12px 22px;
-    border-radius: 999px;
-    background: var(--good);
-    color: #06140d;
-    text-decoration: none;
+    width: 1ch;
+    color: var(--matrix-dim);
+    text-shadow: none;
+    transition: color 0.2s ease, text-shadow 0.2s ease;
   }
-  @keyframes flicker {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.55; }
+  .cell.locked {
+    color: var(--matrix);
+    text-shadow: 0 0 8px var(--matrix), 0 0 22px rgba(57,255,20,0.6);
+    animation: settle 0.3s ease;
   }
-
-  .locks-row {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 10px;
-    margin-bottom: 30px;
-    padding: 4px;
-  }
-  .lock {
-    flex: 0 0 auto;
-    width: 42px;
-    height: 42px;
-    border-radius: 10px;
-    background: #0b0d12;
-    border: 1px solid var(--panel-border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
-  }
-  .lock svg { width: 24px; height: 24px; overflow: visible; }
-  .lock .shackle {
-    stroke: var(--muted);
-    transition: transform 0.4s cubic-bezier(.34,1.56,.64,1), stroke 0.3s ease;
-    transform-origin: 12px 9px;
-  }
-  .lock .body { fill: var(--muted); transition: fill 0.3s ease; }
-  .lock .keyhole { fill: var(--panel); }
-
-  .lock.unlocked {
-    background: #0f2419;
-    border-color: #1d6b4c;
-    box-shadow: 0 0 14px rgba(53,212,136,0.45);
-    animation: unlockPop 0.45s ease;
-  }
-  .lock.unlocked .body { fill: var(--good); }
-  .lock.unlocked .shackle {
-    stroke: var(--good);
-    transform: translateY(-4px) rotate(-28deg);
-  }
-  @keyframes unlockPop {
-    0% { transform: scale(1); }
-    45% { transform: scale(1.28); }
+  @keyframes settle {
+    0% { transform: scale(1.4); }
     100% { transform: scale(1); }
-  }
-
-  button#scanBtn {
-    width: 100%;
-    padding: 14px 16px;
-    border-radius: 10px;
-    border: none;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    background: var(--accent);
-    color: #fff;
-    transition: background 0.15s ease;
-  }
-  button#scanBtn:hover { background: #4a7af0; }
-  button#scanBtn.active {
-    background: var(--accent-dim);
-    color: var(--accent);
   }
 
   .status {
     display: flex;
     align-items: center;
-    justify-content: center;
     gap: 8px;
-    font-size: 13px;
+    font-size: 12px;
+    letter-spacing: 1px;
     color: var(--muted);
-    margin-top: 16px;
-    min-height: 18px;
+    text-transform: uppercase;
+    min-height: 16px;
   }
   .dot {
-    width: 8px;
-    height: 8px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
     background: var(--muted);
     flex-shrink: 0;
   }
-  .dot.scanning { background: var(--accent); animation: pulse 1.2s infinite ease-in-out; }
-  .dot.ok { background: var(--good); }
+  .dot.scanning { background: var(--matrix); animation: pulse 1.2s infinite ease-in-out; }
+  .dot.ok { background: var(--matrix); }
   .dot.err { background: var(--bad); }
   @keyframes pulse {
     0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.4; transform: scale(0.7); }
+    50% { opacity: 0.35; transform: scale(0.7); }
   }
 
-  /* Hidden debug/testing panel — tap the hero 5x to reveal */
-  details.sim {
-    margin-top: 22px;
-    border-top: 1px solid var(--panel-border);
-    padding-top: 16px;
-    text-align: left;
-    display: none;
-  }
-  details.sim.show { display: block; }
-  details.sim summary {
+  button#scanBtn {
+    padding: 12px 28px;
+    border-radius: 4px;
+    border: 1px solid var(--matrix);
+    font-family: inherit;
+    font-size: 13px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    font-weight: 700;
     cursor: pointer;
-    font-size: 12px;
-    color: var(--muted);
-    user-select: none;
+    background: transparent;
+    color: var(--matrix);
+    transition: background 0.15s ease, color 0.15s ease;
   }
+  button#scanBtn:hover { background: rgba(57,255,20,0.1); }
+  button#scanBtn.active {
+    background: var(--matrix);
+    color: #000;
+  }
+
+  .reveal {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    opacity: 0;
+    height: 0;
+    overflow: hidden;
+    transition: opacity 0.6s ease;
+  }
+  .reveal.show {
+    opacity: 1;
+    height: auto;
+  }
+  .reveal .tag {
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--matrix);
+    text-transform: uppercase;
+  }
+  .reveal a.ig-link {
+    padding: 10px 22px;
+    border-radius: 999px;
+    background: var(--matrix);
+    color: #000;
+    font-weight: 700;
+    text-decoration: none;
+    font-size: 13px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* Hidden debug/testing panel — tap the code row 5x to reveal */
+  .sim {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .sim.show { display: flex; }
   .sim-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-    margin-top: 12px;
+    gap: 6px;
   }
   .sim-grid button {
-    background: var(--accent-dim);
-    color: var(--text);
-    font-size: 13px;
-    padding: 10px 0;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-  }
-  .sim-grid button:hover { background: #35437a; }
-  .reset-btn {
-    width: 100%;
-    margin-top: 10px;
     background: transparent;
-    border: 1px solid var(--panel-border);
-    color: var(--bad);
+    color: var(--matrix);
+    border: 1px solid var(--muted);
+    font-family: inherit;
     font-size: 12px;
-    padding: 8px 0;
-    border-radius: 8px;
+    padding: 6px 10px;
     cursor: pointer;
+    border-radius: 4px;
   }
-  .reset-btn:hover { background: rgba(255,93,108,0.08); }
+  .sim-grid button:hover { border-color: var(--matrix); }
+  .reset-btn {
+    background: transparent;
+    border: 1px solid var(--bad);
+    color: var(--bad);
+    font-family: inherit;
+    font-size: 11px;
+    padding: 6px 12px;
+    cursor: pointer;
+    border-radius: 4px;
+  }
 </style>
 </head>
 <body>
 
-<div class="card">
-  <div id="hero" class="hero">???</div>
+<canvas id="matrix"></canvas>
 
-  <div id="locksRow" class="locks-row"></div>
-
-  <button id="scanBtn">Start Scanning</button>
+<div class="stage">
+  <div id="codeRow" class="code-row"></div>
 
   <div class="status">
     <span id="statusDot" class="dot"></span>
     <span id="statusText">Idle</span>
   </div>
 
-  <details class="sim" id="simPanel">
-    <summary>Testing tools</summary>
+  <button id="scanBtn">Start Scanning</button>
+
+  <div id="reveal" class="reveal">
+    <div class="tag">Access Granted</div>
+    <a class="ig-link" id="igLink" href="#" target="_blank" rel="noopener noreferrer">Open Instagram</a>
+  </div>
+
+  <div class="sim" id="simPanel">
     <div class="sim-grid" id="simGrid"></div>
     <button class="reset-btn" id="resetBtn">Reset progress</button>
-  </details>
+  </div>
 </div>
 
 <script>
   // ── Config ──────────────────────────────────────────────
-  const TOTAL_TAGS = 8; // IDs 0-7
+  const TARGET = "ECHO-006".split(""); // one char per tag, id = index
+  const TOTAL_TAGS = TARGET.length; // 8
   const INSTAGRAM_URL = "https://instagram.com/REPLACE_ME"; // TODO: set real link
-  const STORAGE_KEY = "scoutnfc_unlocked_v1";
+  const STORAGE_KEY = "scoutnfc_unlocked_v2";
+  const GLYPHS = "アイウエオカキクケコサシスセソタチツテトABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+  // ── Matrix rain background ─────────────────────────────
+  const canvas = document.getElementById("matrix");
+  const ctx = canvas.getContext("2d");
+  const fontSize = 16;
+  let columns, drops;
+
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    columns = Math.floor(canvas.width / fontSize);
+    drops = new Array(columns).fill(0).map(() => Math.random() * -50);
+  }
+  resizeCanvas();
+  window.addEventListener("resize", resizeCanvas);
+
+  function drawMatrix() {
+    ctx.fillStyle = "rgba(0,0,0,0.06)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#0f0";
+    ctx.font = fontSize + "px monospace";
+    for (let i = 0; i < drops.length; i++) {
+      const char = GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
+      ctx.fillText(char, i * fontSize, drops[i] * fontSize);
+      if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+      drops[i]++;
+    }
+  }
+  setInterval(drawMatrix, 45);
 
   // ── State ───────────────────────────────────────────────
   let unlocked = loadProgress();
+  const cellTimers = new Array(TOTAL_TAGS).fill(null);
 
   function loadProgress() {
     try {
@@ -243,62 +247,80 @@
       return new Set();
     }
   }
-
   function saveProgress() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify([...unlocked]));
   }
 
   // ── DOM refs ────────────────────────────────────────────
-  const heroEl = document.getElementById("hero");
-  const locksRowEl = document.getElementById("locksRow");
+  const codeRowEl = document.getElementById("codeRow");
   const statusDot = document.getElementById("statusDot");
   const statusText = document.getElementById("statusText");
   const scanBtn = document.getElementById("scanBtn");
+  const revealEl = document.getElementById("reveal");
+  const igLink = document.getElementById("igLink");
   const simGrid = document.getElementById("simGrid");
   const resetBtn = document.getElementById("resetBtn");
   const simPanel = document.getElementById("simPanel");
 
-  const LOCK_SVG = `
-    <svg viewBox="0 0 24 24" fill="none">
-      <path class="shackle" d="M8 10V7a4 4 0 0 1 8 0v3" stroke-width="2.2" stroke-linecap="round"/>
-      <rect class="body" x="5" y="10" width="14" height="10" rx="2.5"/>
-      <circle class="keyhole" cx="12" cy="14.5" r="1.4"/>
-    </svg>
-  `;
+  igLink.href = INSTAGRAM_URL;
 
-  function renderLocks() {
-    locksRowEl.innerHTML = "";
-    for (let id = 0; id < TOTAL_TAGS; id++) {
-      const el = document.createElement("div");
-      el.className = "lock" + (unlocked.has(id) ? " unlocked" : "");
-      el.dataset.id = id;
-      el.innerHTML = LOCK_SVG;
-      locksRowEl.appendChild(el);
-    }
+  function randomGlyph() {
+    return GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
   }
 
-  function renderSimButtons() {
-    simGrid.innerHTML = "";
-    for (let id = 0; id < TOTAL_TAGS; id++) {
-      const btn = document.createElement("button");
-      btn.textContent = id;
-      btn.addEventListener("click", () => handleScannedId(id, "SIMULATED"));
-      simGrid.appendChild(btn);
+  function buildCells() {
+    codeRowEl.innerHTML = "";
+    for (let i = 0; i < TOTAL_TAGS; i++) {
+      const span = document.createElement("span");
+      span.className = "cell";
+      span.dataset.id = i;
+      codeRowEl.appendChild(span);
     }
   }
+  const cells = [];
 
-  function updateUI() {
-    document.querySelectorAll(".lock").forEach((el) => {
-      const id = Number(el.dataset.id);
-      el.classList.toggle("unlocked", unlocked.has(id));
-    });
+  function startScramble(i) {
+    clearInterval(cellTimers[i]);
+    cellTimers[i] = setInterval(() => {
+      cells[i].textContent = randomGlyph();
+    }, 110 + Math.random() * 90);
+  }
 
+  function lockInChar(i) {
+    clearInterval(cellTimers[i]);
+    cellTimers[i] = null;
+    let ticks = 0;
+    const burst = setInterval(() => {
+      if (ticks < 10) {
+        cells[i].textContent = randomGlyph();
+        ticks++;
+      } else {
+        clearInterval(burst);
+        cells[i].textContent = TARGET[i];
+        cells[i].classList.add("locked");
+        checkComplete();
+      }
+    }, 40);
+  }
+
+  function initCells() {
+    codeRowEl.querySelectorAll(".cell").forEach((el) => cells.push(el));
+    for (let i = 0; i < TOTAL_TAGS; i++) {
+      if (unlocked.has(i)) {
+        cells[i].textContent = TARGET[i];
+        cells[i].classList.add("locked");
+      } else {
+        startScramble(i);
+      }
+    }
+    checkComplete();
+  }
+
+  function checkComplete() {
     if (unlocked.size >= TOTAL_TAGS) {
-      heroEl.classList.add("solved");
-      heroEl.innerHTML = `<a class="ig-link" href="${INSTAGRAM_URL}" target="_blank" rel="noopener noreferrer">Open Instagram</a>`;
+      revealEl.classList.add("show");
     } else {
-      heroEl.classList.remove("solved");
-      heroEl.textContent = "???";
+      revealEl.classList.remove("show");
     }
   }
 
@@ -318,8 +340,8 @@
     }
     unlocked.add(id);
     saveProgress();
-    updateUI();
-    setStatus("ok", `Tag ${id} unlocked! (${unlocked.size}/${TOTAL_TAGS})`);
+    lockInChar(id);
+    setStatus("ok", `Tag ${id} unlocked (${unlocked.size}/${TOTAL_TAGS})`);
   }
 
   // ── NFC reading ─────────────────────────────────────────
@@ -347,14 +369,14 @@
 
   async function startScan() {
     if (!("NDEFReader" in window)) {
-      setStatus("err", "Web NFC not supported in this browser (try Chrome on Android, over HTTPS)");
+      setStatus("err", "Web NFC not supported (try Chrome on Android, over HTTPS)");
       return;
     }
     try {
       abortController = new AbortController();
       const ndef = new NDEFReader();
       await ndef.scan({ signal: abortController.signal });
-      setStatus("scanning", "Scanning… hold each tag near your device");
+      setStatus("scanning", "Scanning…");
       scanBtn.textContent = "Stop Scanning";
       scanBtn.classList.add("active");
 
@@ -390,15 +412,29 @@
   resetBtn.addEventListener("click", () => {
     unlocked = new Set();
     saveProgress();
-    updateUI();
+    for (let i = 0; i < TOTAL_TAGS; i++) {
+      cells[i].classList.remove("locked");
+      startScramble(i);
+    }
+    checkComplete();
     setStatus(null, "Progress reset");
   });
 
-  // Tap the hero 5x within 2s to reveal hidden testing tools
+  function renderSimButtons() {
+    simGrid.innerHTML = "";
+    for (let id = 0; id < TOTAL_TAGS; id++) {
+      const btn = document.createElement("button");
+      btn.textContent = TARGET[id] + " (" + id + ")";
+      btn.addEventListener("click", () => handleScannedId(id, "SIMULATED"));
+      simGrid.appendChild(btn);
+    }
+  }
+
+  // Tap the code row 5x within 2s to reveal hidden testing tools
   // (simulate scans / reset) without cluttering the live UI.
   let tapCount = 0;
   let tapTimer = null;
-  heroEl.addEventListener("click", () => {
+  codeRowEl.addEventListener("click", () => {
     tapCount++;
     clearTimeout(tapTimer);
     tapTimer = setTimeout(() => { tapCount = 0; }, 2000);
@@ -409,9 +445,9 @@
   });
 
   // ── Init ────────────────────────────────────────────────
-  renderLocks();
+  buildCells();
+  initCells();
   renderSimButtons();
-  updateUI();
 </script>
 
 </body>
