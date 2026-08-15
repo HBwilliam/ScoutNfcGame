@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NFC Tag Scanner</title>
+<title>Scout NFC Hunt</title>
 <style>
   :root {
     --bg: #0f1115;
@@ -19,7 +19,7 @@
   * { box-sizing: border-box; }
   html, body {
     margin: 0;
-    height: 100%;
+    min-height: 100%;
     background: var(--bg);
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -32,54 +32,117 @@
   }
   .card {
     width: 100%;
-    max-width: 420px;
+    max-width: 480px;
     background: var(--panel);
     border: 1px solid var(--panel-border);
-    border-radius: 16px;
-    padding: 28px 24px;
+    border-radius: 20px;
+    padding: 36px 24px 28px;
     box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    text-align: center;
   }
-  h1 {
-    font-size: 18px;
-    font-weight: 600;
-    margin: 0 0 4px;
-    letter-spacing: 0.2px;
-  }
-  .sub {
+
+  .hero {
+    font-size: 56px;
+    font-weight: 800;
+    letter-spacing: 4px;
     color: var(--muted);
-    font-size: 13px;
-    margin: 0 0 22px;
+    margin-bottom: 32px;
+    animation: flicker 3s ease-in-out infinite;
+    transition: color 0.4s ease;
   }
-  .display {
+  .hero.solved {
+    color: var(--good);
+    letter-spacing: normal;
+    animation: none;
+  }
+  .hero .ig-link {
+    display: inline-block;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: normal;
+    padding: 12px 22px;
+    border-radius: 999px;
+    background: var(--good);
+    color: #06140d;
+    text-decoration: none;
+  }
+  @keyframes flicker {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+  }
+
+  .locks-row {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 30px;
+    overflow-x: auto;
+    padding: 4px;
+  }
+  .lock {
+    flex: 0 0 auto;
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
     background: #0b0d12;
     border: 1px solid var(--panel-border);
-    border-radius: 12px;
-    height: 160px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 18px;
-    position: relative;
-    overflow: hidden;
+    transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
   }
-  .letter {
-    font-size: 84px;
-    font-weight: 700;
-    color: var(--accent);
-    transition: opacity 0.25s ease, transform 0.25s ease;
+  .lock svg { width: 24px; height: 24px; overflow: visible; }
+  .lock .shackle {
+    stroke: var(--muted);
+    transition: transform 0.4s cubic-bezier(.34,1.56,.64,1), stroke 0.3s ease;
+    transform-origin: 12px 9px;
   }
-  .letter.placeholder {
-    color: var(--muted);
+  .lock .body { fill: var(--muted); transition: fill 0.3s ease; }
+  .lock .keyhole { fill: var(--panel); }
+
+  .lock.unlocked {
+    background: #0f2419;
+    border-color: #1d6b4c;
+    box-shadow: 0 0 14px rgba(53,212,136,0.45);
+    animation: unlockPop 0.45s ease;
+  }
+  .lock.unlocked .body { fill: var(--good); }
+  .lock.unlocked .shackle {
+    stroke: var(--good);
+    transform: translateY(-4px) rotate(-28deg);
+  }
+  @keyframes unlockPop {
+    0% { transform: scale(1); }
+    45% { transform: scale(1.28); }
+    100% { transform: scale(1); }
+  }
+
+  button#scanBtn {
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: 10px;
+    border: none;
     font-size: 15px;
-    font-weight: 400;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--accent);
+    color: #fff;
+    transition: background 0.15s ease;
   }
+  button#scanBtn:hover { background: #4a7af0; }
+  button#scanBtn.active {
+    background: var(--accent-dim);
+    color: var(--accent);
+  }
+
   .status {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     font-size: 13px;
     color: var(--muted);
-    margin-bottom: 18px;
+    margin-top: 16px;
     min-height: 18px;
   }
   .dot {
@@ -96,40 +159,17 @@
     0%, 100% { opacity: 1; transform: scale(1); }
     50% { opacity: 0.4; transform: scale(0.7); }
   }
-  button {
-    width: 100%;
-    padding: 13px 16px;
-    border-radius: 10px;
-    border: none;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.15s ease, opacity 0.15s ease;
-  }
-  #scanBtn {
-    background: var(--accent);
-    color: #fff;
-  }
-  #scanBtn:hover { background: #4a7af0; }
-  #scanBtn:disabled { opacity: 0.5; cursor: default; }
-  .meta {
-    margin-top: 16px;
-    font-size: 12px;
-    color: var(--muted);
-    display: none;
-    line-height: 1.6;
-    border-top: 1px solid var(--panel-border);
-    padding-top: 12px;
-  }
-  .meta.show { display: block; }
-  .meta span { color: var(--text); }
 
-  .sim {
-    margin-top: 20px;
+  /* Hidden debug/testing panel — tap the hero 5x to reveal */
+  details.sim {
+    margin-top: 22px;
     border-top: 1px solid var(--panel-border);
     padding-top: 16px;
+    text-align: left;
+    display: none;
   }
-  .sim summary {
+  details.sim.show { display: block; }
+  details.sim summary {
     cursor: pointer;
     font-size: 12px;
     color: var(--muted);
@@ -137,7 +177,7 @@
   }
   .sim-grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 8px;
     margin-top: 12px;
   }
@@ -146,89 +186,146 @@
     color: var(--text);
     font-size: 13px;
     padding: 10px 0;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
   }
   .sim-grid button:hover { background: #35437a; }
+  .reset-btn {
+    width: 100%;
+    margin-top: 10px;
+    background: transparent;
+    border: 1px solid var(--panel-border);
+    color: var(--bad);
+    font-size: 12px;
+    padding: 8px 0;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .reset-btn:hover { background: rgba(255,93,108,0.08); }
 </style>
 </head>
 <body>
 
 <div class="card">
-  <h1>NFC Tag Scanner</h1>
-  <p class="sub">Tap "Scan" then hold a tag near your device.</p>
+  <div id="hero" class="hero">???</div>
 
-  <div class="display">
-    <div id="letter" class="letter placeholder">Waiting for scan…</div>
-  </div>
+  <div id="locksRow" class="locks-row"></div>
+
+  <button id="scanBtn">Start Scanning</button>
 
   <div class="status">
     <span id="statusDot" class="dot"></span>
     <span id="statusText">Idle</span>
   </div>
 
-  <button id="scanBtn">Scan NFC Tag</button>
-
-  <div id="meta" class="meta">
-    Tag ID: <span id="metaId">–</span><br>
-    Serial number: <span id="metaSerial">–</span>
-  </div>
-
-  <details class="sim">
-    <summary>No NFC hardware? Simulate a scan</summary>
-    <div class="sim-grid">
-      <button data-id="0">0</button>
-      <button data-id="1">1</button>
-      <button data-id="2">2</button>
-      <button data-id="3">3</button>
-      <button data-id="4">4</button>
-    </div>
+  <details class="sim" id="simPanel">
+    <summary>Testing tools</summary>
+    <div class="sim-grid" id="simGrid"></div>
+    <button class="reset-btn" id="resetBtn">Reset progress</button>
   </details>
 </div>
 
 <script>
-  // Map scanned IDs (0-4) to their associated data.
-  // Swap this out for real data lookups (API call, DB, etc.) as needed.
-  const ID_DATA = {
-    0: "H",
-    1: "E",
-    2: "L",
-    3: "L",
-    4: "O",
-  };
+  // ── Config ──────────────────────────────────────────────
+  const TOTAL_TAGS = 8; // IDs 0-7
+  const INSTAGRAM_URL = "https://instagram.com/REPLACE_ME"; // TODO: set real link
+  const STORAGE_KEY = "scoutnfc_unlocked_v1";
 
-  const letterEl = document.getElementById("letter");
+  // ── State ───────────────────────────────────────────────
+  let unlocked = loadProgress();
+
+  function loadProgress() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      return new Set(raw.filter((n) => Number.isInteger(n) && n >= 0 && n < TOTAL_TAGS));
+    } catch {
+      return new Set();
+    }
+  }
+
+  function saveProgress() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([...unlocked]));
+  }
+
+  // ── DOM refs ────────────────────────────────────────────
+  const heroEl = document.getElementById("hero");
+  const locksRowEl = document.getElementById("locksRow");
   const statusDot = document.getElementById("statusDot");
   const statusText = document.getElementById("statusText");
   const scanBtn = document.getElementById("scanBtn");
-  const metaEl = document.getElementById("meta");
-  const metaId = document.getElementById("metaId");
-  const metaSerial = document.getElementById("metaSerial");
+  const simGrid = document.getElementById("simGrid");
+  const resetBtn = document.getElementById("resetBtn");
+  const simPanel = document.getElementById("simPanel");
+
+  const LOCK_SVG = `
+    <svg viewBox="0 0 24 24" fill="none">
+      <path class="shackle" d="M8 10V7a4 4 0 0 1 8 0v3" stroke-width="2.2" stroke-linecap="round"/>
+      <rect class="body" x="5" y="10" width="14" height="10" rx="2.5"/>
+      <circle class="keyhole" cx="12" cy="14.5" r="1.4"/>
+    </svg>
+  `;
+
+  function renderLocks() {
+    locksRowEl.innerHTML = "";
+    for (let id = 0; id < TOTAL_TAGS; id++) {
+      const el = document.createElement("div");
+      el.className = "lock" + (unlocked.has(id) ? " unlocked" : "");
+      el.dataset.id = id;
+      el.innerHTML = LOCK_SVG;
+      locksRowEl.appendChild(el);
+    }
+  }
+
+  function renderSimButtons() {
+    simGrid.innerHTML = "";
+    for (let id = 0; id < TOTAL_TAGS; id++) {
+      const btn = document.createElement("button");
+      btn.textContent = id;
+      btn.addEventListener("click", () => handleScannedId(id, "SIMULATED"));
+      simGrid.appendChild(btn);
+    }
+  }
+
+  function updateUI() {
+    document.querySelectorAll(".lock").forEach((el) => {
+      const id = Number(el.dataset.id);
+      el.classList.toggle("unlocked", unlocked.has(id));
+    });
+
+    if (unlocked.size >= TOTAL_TAGS) {
+      heroEl.classList.add("solved");
+      heroEl.innerHTML = `<a class="ig-link" href="${INSTAGRAM_URL}" target="_blank" rel="noopener noreferrer">Open Instagram</a>`;
+    } else {
+      heroEl.classList.remove("solved");
+      heroEl.textContent = "???";
+    }
+  }
 
   function setStatus(state, text) {
     statusDot.className = "dot" + (state ? " " + state : "");
     statusText.textContent = text;
   }
 
-  function showResult(id, serial) {
-    const data = ID_DATA[id];
-    if (data === undefined) {
-      letterEl.textContent = "?";
-      letterEl.classList.remove("placeholder");
-      setStatus("err", `Unknown ID "${id}" — no data mapped`);
-    } else {
-      letterEl.textContent = data;
-      letterEl.classList.remove("placeholder");
-      setStatus("ok", "Scan successful");
+  function handleScannedId(id, serial) {
+    if (id === null || id < 0 || id >= TOTAL_TAGS) {
+      setStatus("err", `Unrecognized tag${id !== null ? ` (ID ${id})` : ""}`);
+      return;
     }
-    metaId.innerHTML = "";
-    metaId.textContent = id;
-    metaSerial.textContent = serial ?? "–";
-    metaEl.classList.add("show");
+    if (unlocked.has(id)) {
+      setStatus("ok", `Tag ${id} already unlocked`);
+      return;
+    }
+    unlocked.add(id);
+    saveProgress();
+    updateUI();
+    setStatus("ok", `Tag ${id} unlocked! (${unlocked.size}/${TOTAL_TAGS})`);
   }
 
-  // Reads a numeric ID (0-4) out of a scanned NDEF message.
-  // Expects a text record whose content is the ID, e.g. tag written with "2".
+  // ── NFC reading ─────────────────────────────────────────
+  // Expects a text record on the tag containing its ID (0-7).
   // Falls back to deriving an ID from the tag's serial number if no
-  // matching text record is found, so untouched/blank tags still demo something.
+  // matching text record is found.
   function extractId(message, serialNumber) {
     for (const record of message.records) {
       if (record.recordType === "text") {
@@ -241,10 +338,12 @@
     if (serialNumber) {
       const hex = serialNumber.replace(/:/g, "");
       const n = parseInt(hex.slice(-2), 16);
-      if (!Number.isNaN(n)) return n % 5;
+      if (!Number.isNaN(n)) return n % TOTAL_TAGS;
     }
     return null;
   }
+
+  let abortController = null;
 
   async function startScan() {
     if (!("NDEFReader" in window)) {
@@ -252,40 +351,67 @@
       return;
     }
     try {
+      abortController = new AbortController();
       const ndef = new NDEFReader();
-      await ndef.scan();
-      setStatus("scanning", "Scanning… hold a tag near your device");
-      scanBtn.disabled = true;
+      await ndef.scan({ signal: abortController.signal });
+      setStatus("scanning", "Scanning… hold each tag near your device");
+      scanBtn.textContent = "Stop Scanning";
+      scanBtn.classList.add("active");
 
       ndef.addEventListener("reading", ({ message, serialNumber }) => {
         const id = extractId(message, serialNumber);
-        if (id === null) {
-          setStatus("err", "Tag read, but no usable ID found on it");
-        } else {
-          showResult(id, serialNumber);
-        }
-        scanBtn.disabled = false;
+        handleScannedId(id, serialNumber);
       });
 
       ndef.addEventListener("readingerror", () => {
         setStatus("err", "Failed to read tag — try again");
-        scanBtn.disabled = false;
+      });
+
+      abortController.signal.addEventListener("abort", () => {
+        setStatus(null, "Idle");
+        scanBtn.textContent = "Start Scanning";
+        scanBtn.classList.remove("active");
       });
     } catch (err) {
       setStatus("err", "Scan failed: " + err.message);
-      scanBtn.disabled = false;
+      scanBtn.textContent = "Start Scanning";
+      scanBtn.classList.remove("active");
     }
   }
 
-  scanBtn.addEventListener("click", startScan);
-
-  // Simulate mode — for testing on desktop or without physical tags.
-  document.querySelectorAll(".sim-grid button").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const id = parseInt(btn.dataset.id, 10);
-      showResult(id, "SIMULATED");
-    });
+  scanBtn.addEventListener("click", () => {
+    if (abortController && !abortController.signal.aborted) {
+      abortController.abort();
+    } else {
+      startScan();
+    }
   });
+
+  resetBtn.addEventListener("click", () => {
+    unlocked = new Set();
+    saveProgress();
+    updateUI();
+    setStatus(null, "Progress reset");
+  });
+
+  // Tap the hero 5x within 2s to reveal hidden testing tools
+  // (simulate scans / reset) without cluttering the live UI.
+  let tapCount = 0;
+  let tapTimer = null;
+  heroEl.addEventListener("click", () => {
+    tapCount++;
+    clearTimeout(tapTimer);
+    tapTimer = setTimeout(() => { tapCount = 0; }, 2000);
+    if (tapCount >= 5) {
+      simPanel.classList.add("show");
+      tapCount = 0;
+    }
+  });
+
+  // ── Init ────────────────────────────────────────────────
+  renderLocks();
+  renderSimButtons();
+  updateUI();
 </script>
 
 </body>
