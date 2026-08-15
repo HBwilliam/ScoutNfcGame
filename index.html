@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ECHO-006</title>
+<title>???</title>
 <style>
   :root {
     --matrix: #39ff14;
@@ -20,12 +20,6 @@
     font-family: "Courier New", Consolas, monospace;
   }
 
-  #matrix {
-    position: fixed;
-    inset: 0;
-    display: block;
-  }
-
   .stage {
     position: fixed;
     inset: 0;
@@ -40,23 +34,36 @@
 
   .code-row {
     display: flex;
-    gap: clamp(4px, 1.6vw, 12px);
+    gap: 8px;
   }
   .cell {
-    font-size: clamp(26px, 8vw, 48px);
-    font-weight: 700;
-    width: 1ch;
-    color: var(--matrix-dim);
-    text-shadow: none;
-    transition: color 0.2s ease, text-shadow 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    border-radius: 4px;
   }
-  .cell.locked {
+  .cell canvas {
+    position: absolute;
+    inset: 0;
+    transition: opacity 0.3s ease;
+  }
+  .cell .glyph {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
     color: var(--matrix);
+    opacity: 0;
     text-shadow: 0 0 8px var(--matrix), 0 0 22px rgba(57,255,20,0.6);
+  }
+  .cell.locked canvas { opacity: 0; }
+  .cell.locked .glyph {
+    opacity: 1;
     animation: settle 0.3s ease;
   }
   @keyframes settle {
-    0% { transform: scale(1.4); }
+    0% { transform: scale(1.5); }
     100% { transform: scale(1); }
   }
 
@@ -175,8 +182,6 @@
 </head>
 <body>
 
-<canvas id="matrix"></canvas>
-
 <div class="stage">
   <div id="codeRow" class="code-row"></div>
 
@@ -203,41 +208,16 @@
   const TARGET = "ECHO-006".split(""); // one char per tag, id = index
   const TOTAL_TAGS = TARGET.length; // 8
   const INSTAGRAM_URL = "https://instagram.com/REPLACE_ME"; // TODO: set real link
-  const STORAGE_KEY = "scoutnfc_unlocked_v2";
+  const STORAGE_KEY = "scoutnfc_unlocked_v3";
   const GLYPHS = "アイウエオカキクケコサシスセソタチツテトABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const GAP = 8;
 
-  // ── Matrix rain background ─────────────────────────────
-  const canvas = document.getElementById("matrix");
-  const ctx = canvas.getContext("2d");
-  const fontSize = 16;
-  let columns, drops;
-
-  function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    columns = Math.floor(canvas.width / fontSize);
-    drops = new Array(columns).fill(0).map(() => Math.random() * -50);
+  function randomGlyph() {
+    return GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
   }
-  resizeCanvas();
-  window.addEventListener("resize", resizeCanvas);
-
-  function drawMatrix() {
-    ctx.fillStyle = "rgba(0,0,0,0.06)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#0f0";
-    ctx.font = fontSize + "px monospace";
-    for (let i = 0; i < drops.length; i++) {
-      const char = GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
-      ctx.fillText(char, i * fontSize, drops[i] * fontSize);
-      if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
-      drops[i]++;
-    }
-  }
-  setInterval(drawMatrix, 45);
 
   // ── State ───────────────────────────────────────────────
   let unlocked = loadProgress();
-  const cellTimers = new Array(TOTAL_TAGS).fill(null);
 
   function loadProgress() {
     try {
@@ -264,64 +244,108 @@
 
   igLink.href = INSTAGRAM_URL;
 
-  function randomGlyph() {
-    return GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
-  }
+  // ── Per-cell waterfall columns ──────────────────────────
+  // Each character slot hosts its own tiny falling-character
+  // stream. The stream freezes and the slot reveals its real
+  // character once that tag has been scanned.
+  const cells = []; // { root, canvas, ctx, glyph, dropY, running, w, h }
 
   function buildCells() {
     codeRowEl.innerHTML = "";
     for (let i = 0; i < TOTAL_TAGS; i++) {
-      const span = document.createElement("span");
-      span.className = "cell";
-      span.dataset.id = i;
-      codeRowEl.appendChild(span);
+      const root = document.createElement("div");
+      root.className = "cell";
+      root.dataset.id = i;
+
+      const canvas = document.createElement("canvas");
+      const glyph = document.createElement("span");
+      glyph.className = "glyph";
+
+      root.appendChild(canvas);
+      root.appendChild(glyph);
+      codeRowEl.appendChild(root);
+
+      cells.push({ root, canvas, ctx: canvas.getContext("2d"), glyph, dropY: 0, running: true, w: 0, h: 0 });
     }
   }
-  const cells = [];
 
-  function startScramble(i) {
-    clearInterval(cellTimers[i]);
-    cellTimers[i] = setInterval(() => {
-      cells[i].textContent = randomGlyph();
-    }, 110 + Math.random() * 90);
+  function sizeCells() {
+    const available = Math.min(window.innerWidth - 48, 520);
+    const w = Math.max(22, Math.min(46, Math.floor((available - GAP * (TOTAL_TAGS - 1)) / TOTAL_TAGS)));
+    const h = Math.round(w * 3.4);
+    const dpr = window.devicePixelRatio || 1;
+
+    codeRowEl.style.gap = GAP + "px";
+
+    cells.forEach((cell) => {
+      cell.w = w;
+      cell.h = h;
+      cell.root.style.width = w + "px";
+      cell.root.style.height = h + "px";
+
+      cell.canvas.style.width = w + "px";
+      cell.canvas.style.height = h + "px";
+      cell.canvas.width = w * dpr;
+      cell.canvas.height = h * dpr;
+      cell.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      cell.ctx.clearRect(0, 0, w, h);
+
+      cell.glyph.style.fontSize = Math.round(w * 0.85) + "px";
+    });
+  }
+  window.addEventListener("resize", sizeCells);
+
+  function drawColumn(cell) {
+    const { ctx, w, h } = cell;
+    const fontSize = Math.max(12, Math.round(w * 0.8));
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.fillRect(0, 0, w, h);
+    ctx.font = fontSize + "px monospace";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#39ff14";
+    ctx.fillText(randomGlyph(), w / 2, cell.dropY);
+    cell.dropY += fontSize;
+    if (cell.dropY > h + fontSize) cell.dropY = 0;
   }
 
+  const columnLoop = setInterval(() => {
+    cells.forEach((cell) => {
+      if (cell.running) drawColumn(cell);
+    });
+  }, 90);
+
   function lockInChar(i) {
-    clearInterval(cellTimers[i]);
-    cellTimers[i] = null;
+    const cell = cells[i];
+    cell.running = false;
     let ticks = 0;
     const burst = setInterval(() => {
-      if (ticks < 10) {
-        cells[i].textContent = randomGlyph();
+      if (ticks < 8) {
+        cell.glyph.textContent = randomGlyph();
+        cell.glyph.style.opacity = 1;
         ticks++;
       } else {
         clearInterval(burst);
-        cells[i].textContent = TARGET[i];
-        cells[i].classList.add("locked");
+        cell.glyph.textContent = TARGET[i];
+        cell.root.classList.add("locked");
         checkComplete();
       }
-    }, 40);
+    }, 45);
   }
 
   function initCells() {
-    codeRowEl.querySelectorAll(".cell").forEach((el) => cells.push(el));
     for (let i = 0; i < TOTAL_TAGS; i++) {
       if (unlocked.has(i)) {
-        cells[i].textContent = TARGET[i];
-        cells[i].classList.add("locked");
-      } else {
-        startScramble(i);
+        cells[i].running = false;
+        cells[i].glyph.textContent = TARGET[i];
+        cells[i].glyph.style.opacity = 1;
+        cells[i].root.classList.add("locked");
       }
     }
     checkComplete();
   }
 
   function checkComplete() {
-    if (unlocked.size >= TOTAL_TAGS) {
-      revealEl.classList.add("show");
-    } else {
-      revealEl.classList.remove("show");
-    }
+    revealEl.classList.toggle("show", unlocked.size >= TOTAL_TAGS);
   }
 
   function setStatus(state, text) {
@@ -412,10 +436,12 @@
   resetBtn.addEventListener("click", () => {
     unlocked = new Set();
     saveProgress();
-    for (let i = 0; i < TOTAL_TAGS; i++) {
-      cells[i].classList.remove("locked");
-      startScramble(i);
-    }
+    cells.forEach((cell, i) => {
+      cell.root.classList.remove("locked");
+      cell.glyph.style.opacity = 0;
+      cell.dropY = 0;
+      cell.running = true;
+    });
     checkComplete();
     setStatus(null, "Progress reset");
   });
@@ -446,6 +472,7 @@
 
   // ── Init ────────────────────────────────────────────────
   buildCells();
+  sizeCells();
   initCells();
   renderSimButtons();
 </script>
