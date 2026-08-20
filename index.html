@@ -143,41 +143,6 @@
     letter-spacing: 1px;
     text-transform: uppercase;
   }
-
-  /* Hidden debug/testing panel — tap the code row 5x to reveal */
-  .sim {
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-  }
-  .sim.show { display: flex; }
-  .sim-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 6px;
-  }
-  .sim-grid button {
-    background: transparent;
-    color: var(--matrix);
-    border: 1px solid var(--muted);
-    font-family: inherit;
-    font-size: 12px;
-    padding: 6px 10px;
-    cursor: pointer;
-    border-radius: 4px;
-  }
-  .sim-grid button:hover { border-color: var(--matrix); }
-  .reset-btn {
-    background: transparent;
-    border: 1px solid var(--bad);
-    color: var(--bad);
-    font-family: inherit;
-    font-size: 11px;
-    padding: 6px 12px;
-    cursor: pointer;
-    border-radius: 4px;
-  }
 </style>
 </head>
 <body>
@@ -195,11 +160,6 @@
   <div id="reveal" class="reveal">
     <div class="tag">Access Granted</div>
     <a class="ig-link" id="igLink" href="#" target="_blank" rel="noopener noreferrer">Open Instagram</a>
-  </div>
-
-  <div class="sim" id="simPanel">
-    <div class="sim-grid" id="simGrid"></div>
-    <button class="reset-btn" id="resetBtn">Reset progress</button>
   </div>
 </div>
 
@@ -238,9 +198,6 @@
   const scanBtn = document.getElementById("scanBtn");
   const revealEl = document.getElementById("reveal");
   const igLink = document.getElementById("igLink");
-  const simGrid = document.getElementById("simGrid");
-  const resetBtn = document.getElementById("resetBtn");
-  const simPanel = document.getElementById("simPanel");
 
   igLink.href = INSTAGRAM_URL;
 
@@ -442,49 +399,11 @@
     }
   });
 
-  resetBtn.addEventListener("click", () => {
-    unlocked = new Set();
-    saveProgress();
-    cells.forEach((cell, i) => {
-      cell.root.classList.remove("locked");
-      cell.glyph.style.opacity = 0;
-      cell.dropY = Math.random() * cell.h;
-      cell.running = true;
-    });
-    checkComplete();
-    setStatus(null, "Progress reset");
-  });
-
-  function renderSimButtons() {
-    simGrid.innerHTML = "";
-    for (let id = 0; id < TOTAL_TAGS; id++) {
-      const btn = document.createElement("button");
-      btn.textContent = TARGET[id] + " (" + id + ")";
-      btn.addEventListener("click", () => handleScannedId(id, "SIMULATED"));
-      simGrid.appendChild(btn);
-    }
-  }
-
-  // Tap the code row 5x within 2s to reveal hidden testing tools
-  // (simulate scans / reset) without cluttering the live UI.
-  let tapCount = 0;
-  let tapTimer = null;
-  codeRowEl.addEventListener("click", () => {
-    tapCount++;
-    clearTimeout(tapTimer);
-    tapTimer = setTimeout(() => { tapCount = 0; }, 2000);
-    if (tapCount >= 5) {
-      simPanel.classList.add("show");
-      tapCount = 0;
-    }
-  });
-
   // ── Init ────────────────────────────────────────────────
   buildCells();
   sizeCells();
   initCells();
   cells.forEach(startColumn);
-  renderSimButtons();
 </script>
 
 </body>
